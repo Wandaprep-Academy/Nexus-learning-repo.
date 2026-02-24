@@ -1,54 +1,48 @@
 #!/bin/bash
-
-# Update system packages
-yum update -y
-
-# Install Java 11 (required for Nexus)
-amazon-linux-extras enable corretto8
-yum install java-11-amazon-corretto -y
-
-# Create a nexus user
-useradd nexus
-echo "nexus  ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers
-
-# Download Nexus
+set -euo pipefail
+sudo dnf update -y
+sudo dnf install -y java-11-amazon-corretto-headless
+sudo sh -c 'id -u nexus >/dev/null 2>&1 || useradd --system --create-home --shell /sbin/nologin nexus'
+NEXUS_VERSION="3.89.1-02"
+NEXUS_TGZ="nexus-${NEXUS_VERSION}-linux-x86_64.tar.gz"
+NEXUS_URL="https://download.sonatype.com/nexus/3/${NEXUS_TGZ}"
+echo "=== Downloading Nexus ${NEXUS_VERSION} ==="
 cd /opt
-wget https://download.sonatype.com/nexus/3/latest-unix.tar.gz
-
-# Extract Nexus
-tar -zxvf latest-unix.tar.gz
-mv nexus-* nexus
-chown -R nexus:nexus /opt/nexus
-chown -R nexus:nexus /opt/sonatype-work
-
-# Create a nexus service
-cat <<EOF > /etc/systemd/system/nexus.service
+sudo curl -fL --retry 10 --retry-all-errors -o "${NEXUS_TGZ}" "${NEXUS_URL}"
+echo "=== Extracting Nexus ==="
+sudo tar -zxf "${NEXUS_TGZ}"
+NEXUS_DIR=$(find /opt -maxdepth 1 -type d -name "nexus-${NEXUS_VERSION}*" | head -n 1)
+sudo mv "${NEXUS_DIR}" /opt/nexus
+echo "=== Creating work directory ==="
+mkdir -p /opt/sonatype-work
+echo "=== Fixing permissions ==="
+sudo chown -R nexus:nexus /opt/nexus /opt/sonatype-work
+sudo sed -i -e 's/^-Xms.*/-Xms512m/' -e 's/^-Xmx.*/-Xmx512m/' /opt/nexus/bin/nexus.vmoptions
+echo 'run_as_user="nexus"' | sudo tee /opt/nexus/bin/nexus.rc >/dev/null
+sudo chown nexus:nexus /opt/nexus/bin/nexus.rc
+sudo chmod 644 /opt/nexus/bin/nexus.rc
+sudo tee /etc/systemd/system/nexus.service >/dev/null <<'EOF'
 [Unit]
-Description=Nexus service
+Description=Sonatype Nexus Repository Manager
 After=network.target
 
 [Service]
-Type=forking
-LimitNOFILE=65536
-ExecStart=/opt/nexus/bin/nexus start
-ExecStop=/opt/nexus/bin/nexus stop
+Type=simple
 User=nexus
-Restart=on-abort
+Group=nexus
+LimitNOFILE=65536
+WorkingDirectory=/opt/nexus
+ExecStart=/opt/nexus/bin/nexus run
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=300
 
 [Install]
 WantedBy=multi-user.target
 EOF
-
-# Set run as nexus user in Nexus configuration
-sed -i 's/#run_as_user=""/run_as_user="nexus"/' /opt/nexus/bin/nexus.rc
-
-# Enable and start the Nexus service
-systemctl enable nexus
-systemctl start nexus
-
-# Open firewall for Nexus (port 8081)
-firewall-cmd --zone=public --add-port=8081/tcp --permanent
-firewall-cmd --reload
-
-# Check Nexus status
-systemctl status nexus
+sudo systemctl daemon-reload
+sudo systemctl enable nexus
+sudo systemctl start nexus
+sudo systemctl status nexus -l
+echo "=== Nexus service started ==="
+systemctl status nexus --no-pager
