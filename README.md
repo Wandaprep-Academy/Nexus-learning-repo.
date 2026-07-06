@@ -53,7 +53,7 @@ mvn deploy
 This command will upload the built artifacts to the Nexus repository specified in the distributionManagement section of your pom.xml. Using Nexus Repository Manager alongside Maven simplifies dependency management and enhances the scalability of your CI/CD pipelines.
 
 # Development Environment Project
-![maven-learning](maven-nexus-learning.drawio.png)
+![maven-learning](Maven_Nexus.png)
 
 ###### Project ToolBox 🧰
 - [Git](https://git-scm.com/) Git will be used to manage our application source code.
