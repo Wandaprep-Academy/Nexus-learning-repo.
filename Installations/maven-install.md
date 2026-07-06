@@ -27,11 +27,6 @@ The following are instructions for installing Apache Maven and Java 8 on an Amaz
     ```
 4. Install Java11 for SonarQube
    ```
-   sudo amazon-linux-extras install java-openjdk11
-   ```
-   or
-   
-   ```
    sudo dnf install java-11-amazon-corretto -y
    ```
 6. Enter the following to set Java 8 as the default runtime on your EC2 instance.
