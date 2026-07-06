@@ -73,7 +73,7 @@ This command will upload the built artifacts to the Nexus repository specified i
      - Unzip and Push the code to the Repository you just provisioned
 
 2) **Setting up Maven Server**
-    - Create an Amazon Linux 2 VM instance and call it "maven-server"
+    - Create an Amazon Linux 2023 instance and call it "maven-server"
     - Instance type: t2.micro
     - Security Group (Open): 22 to 0.0.0.0/0 or Your-IP
     - Key pair: Select or create a new keypair
